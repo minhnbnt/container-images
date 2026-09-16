@@ -17,7 +17,7 @@ WORKDIR /builder
 COPY --from=fetcher /fetcher/garage ./garage
 
 RUN chmod +x ./garage
-RUN upx --best --ultra-brute ./garage
+RUN upx --best --lzma ./garage
 
 FROM quay.io/hummingbird/static
 
