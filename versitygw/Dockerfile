@@ -1,6 +1,6 @@
 ARG VERSITYGW_VER=1.9.0
 
-FROM public.ecr.aws/docker/library/alpine:latest AS alpine
+FROM docker.io/library/alpine:latest AS alpine
 
 RUN --mount=type=cache,id=apk-cache,target=/var/cache/apk apk add upx
 
@@ -16,7 +16,7 @@ RUN upx --best --lzma ./versitygw
 RUN mkdir -p /data/iam /data/versioning /data/s3 && chown 65532:65532 /data/iam /data/versioning /data/s3
 
 
-FROM public.ecr.aws/docker/library/alpine:latest
+FROM docker.io/library/alpine:latest
 
 ENV VGW_IAM_DIR=/data/iam
 ENV VGW_VERSIONING_DIR=/data/versioning

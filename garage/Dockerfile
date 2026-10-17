@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/alpine:latest AS upx
+FROM docker.io/library/alpine:latest AS upx
 
 RUN --mount=type=cache,id=apk-cache,target=/var/cache/apk apk add upx
 
