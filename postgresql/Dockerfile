@@ -63,10 +63,6 @@ RUN rpm2cpio pgmq_${PG_MAJOR}-${PGMQ_VER}-1PGDG.f${FEDORA_VER}.noarch.rpm | cpio
 FROM ${BASE_PG}
 ARG PG_MAJOR
 
-USER root
-
-RUN echo "shared_preload_libraries = 'pg_textsearch,vector'" >> /usr/share/pgsql/postgresql.conf.sample
-
 COPY --from=fetcher-textsearch /fetcher/usr/pgsql-${PG_MAJOR}/lib/pg_textsearch.so /usr/lib64/pgsql/
 COPY --from=fetcher-textsearch /fetcher/usr/pgsql-${PG_MAJOR}/share/extension/* /usr/share/pgsql/extension/
 
@@ -76,6 +72,10 @@ COPY --from=fetcher-vector /fetcher/usr/pgsql-${PG_MAJOR}/lib/vector.so /usr/lib
 COPY --from=fetcher-vector /fetcher/usr/pgsql-${PG_MAJOR}/share/extension/* /usr/share/pgsql/extension/
 
 COPY --from=fetcher-mq /fetcher/usr/pgsql-${PG_MAJOR}/share/extension/* /usr/share/pgsql/extension/
+
+COPY <<EOF /usr/share/pgsql/postgresql.conf.sample
+shared_preload_libraries = 'pg_textsearch,vector'
+EOF
 
 COPY <<EOF /docker-entrypoint-initdb.d/01-init-pg_textsearch.sql
 CREATE EXTENSION pg_textsearch;
@@ -88,6 +88,3 @@ EOF
 COPY <<EOF /docker-entrypoint-initdb.d/03-init-pgmq.sql
 CREATE EXTENSION pgmq;
 EOF
-
-USER postgres
-
