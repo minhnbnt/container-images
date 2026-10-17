@@ -6,7 +6,7 @@ ARG YUM_BASE=https://download.postgresql.org/pub/repos/yum/${PG_MAJOR}/fedora/fe
 
 ARG TEXTSEARCH_VER=1.4.0
 ARG VECTOR_VER=0.8.6
-ARG PGMQ_VER=1.10.0
+ARG PGMQ_VER=1.12.0
 
 ARG BASE_BUILDER=quay.io/hummingbird/curl:latest-builder
 ARG BASE_PG=quay.io/hummingbird/postgresql:${PG_MAJOR}
