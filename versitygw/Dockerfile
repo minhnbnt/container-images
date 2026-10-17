@@ -1,0 +1,28 @@
+ARG VERSITYGW_VER=1.9.0
+
+FROM public.ecr.aws/docker/library/alpine:latest AS alpine
+
+RUN --mount=type=cache,id=apk-cache,target=/var/cache/apk apk add upx
+
+FROM ghcr.io/versity/versitygw:v${VERSITYGW_VER} AS versitygw
+
+
+FROM alpine AS builder
+
+WORKDIR /builder
+
+COPY --from=versitygw /usr/local/bin/versitygw ./versitygw
+RUN upx --best --lzma ./versitygw
+RUN mkdir -p /data/iam /data/versioning /data/s3 && chown 65532:65532 /data/iam /data/versioning /data/s3
+
+
+FROM public.ecr.aws/docker/library/alpine:latest
+
+ENV VGW_IAM_DIR=/data/iam
+ENV VGW_VERSIONING_DIR=/data/versioning
+
+COPY --from=builder /builder/versitygw /usr/local/bin/versitygw
+COPY --from=builder /data /data
+COPY --from=versitygw /usr/local/bin/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
