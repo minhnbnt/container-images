@@ -11,7 +11,32 @@ permissions:
   packages: write
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      postgresql: ${{ steps.filter.outputs.postgresql }}
+      garage: ${{ steps.filter.outputs.garage }}
+      versitygw: ${{ steps.filter.outputs.versitygw }}
+      workflow: ${{ steps.filter.outputs.workflow }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            postgresql:
+              - 'postgresql/**'
+            garage:
+              - 'garage/**'
+            versitygw:
+              - 'versitygw/**'
+            workflow:
+              - '.github/workflows/**'
+
   pg_textsearch:
+    needs: changes
+    if: needs.changes.outputs.workflow == 'true' || needs.changes.outputs.postgresql == 'true' || github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +54,8 @@ jobs:
           tags: ghcr.io/${{ github.repository_owner }}/postgresql:${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
 
   garage:
+    needs: changes
+    if: needs.changes.outputs.workflow == 'true' || needs.changes.outputs.garage == 'true' || github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,6 +73,8 @@ jobs:
           tags: ghcr.io/${{ github.repository_owner }}/garage:${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
 
   versitygw:
+    needs: changes
+    if: needs.changes.outputs.workflow == 'true' || needs.changes.outputs.versitygw == 'true' || github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
