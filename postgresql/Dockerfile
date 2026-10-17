@@ -70,7 +70,10 @@ COPY --from=pgmq /usr/share/postgresql/${PG_MAJOR}/extension/pg_partman* /usr/sh
 COPY --from=pgmq /usr/share/postgresql/${PG_MAJOR}/extension/pgmq* /usr/share/pgsql/extension/
 
 COPY <<EOF /usr/share/pgsql/postgresql.conf.sample
+listen_addresses = '*'
+
 shared_preload_libraries = 'pg_stat_statements,pg_partman_bgw,pg_textsearch,vector'
+
 pg_partman_bgw.dbname = 'postgres'
 pg_partman_bgw.interval = 60
 pg_partman_bgw.role = 'postgres'
