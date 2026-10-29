@@ -1,9 +1,8 @@
-ARG VERSITYGW_VER=1.9.0
+ARG VERSITYGW_VER=1.10.0
 
 FROM docker.io/library/alpine:latest AS alpine
 
 RUN --mount=type=cache,id=apk-cache,target=/var/cache/apk apk add upx
-RUN adduser -D -H versitygw
 
 FROM ghcr.io/versity/versitygw:v${VERSITYGW_VER} AS versitygw
 
@@ -11,6 +10,8 @@ FROM ghcr.io/versity/versitygw:v${VERSITYGW_VER} AS versitygw
 FROM alpine AS builder
 
 WORKDIR /builder
+
+RUN adduser -D -H versitygw
 
 COPY --from=versitygw /usr/local/bin/versitygw ./versitygw
 RUN upx --best --lzma ./versitygw
