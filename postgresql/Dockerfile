@@ -6,6 +6,7 @@ ARG YUM_BASE=https://download.postgresql.org/pub/repos/yum/${PG_MAJOR}/fedora/fe
 
 ARG TEXTSEARCH_VER=1.5.1
 ARG VECTOR_VER=0.8.7
+ARG VECTORSCALE_VER=0.9.1
 ARG PGMQ_VER=1.13.1
 
 ARG BASE_BUILDER=quay.io/hummingbird/curl:latest-builder
@@ -50,41 +51,65 @@ ARG YUM_BASE
 RUN curl -LO ${YUM_BASE}/pgvector_${PG_MAJOR}-${VECTOR_VER}-1PGDG.f${FEDORA_VER}.${ARCH}.rpm
 RUN rpm2cpio pgvector_${PG_MAJOR}-${VECTOR_VER}-1PGDG.f${FEDORA_VER}.${ARCH}.rpm | cpio -idmv
 
+FROM fetcher AS fetcher-vectorscale
+ARG PG_MAJOR
+ARG FEDORA_VER
+ARG ARCH
+ARG VECTORSCALE_VER
+ARG YUM_BASE
+
+RUN curl -LO ${YUM_BASE}/pgvectorscale_${PG_MAJOR}-${VECTORSCALE_VER}-1PGDG.f${FEDORA_VER}.${ARCH}.rpm
+RUN rpm2cpio pgvectorscale_${PG_MAJOR}-${VECTORSCALE_VER}-1PGDG.f${FEDORA_VER}.${ARCH}.rpm | cpio -idmv
+
+ARG PG_MAJOR
+ARG VECTORSCALE_VER
+
+RUN <<EOF
+cat > /fetcher/postgresql.conf <<EOC
+listen_addresses = '*'
+
+shared_preload_libraries = 'pg_stat_statements,pg_partman_bgw,pg_textsearch,vector,vectorscale-${VECTORSCALE_VER}'
+
+pg_partman_bgw.dbname = 'postgres'
+pg_partman_bgw.interval = 60
+pg_partman_bgw.role = 'postgres'
+EOC
+EOF
+
+RUN cat /fetcher/postgresql.conf
+
 FROM ghcr.io/pgmq/pg${PG_MAJOR}-pgmq:v${PGMQ_VER} AS pgmq
 
 
 FROM ${BASE_PG}
+
 ARG PG_MAJOR
+ARG VECTORSCALE_VER
 
 COPY --from=fetcher-textsearch /fetcher/usr/pgsql-${PG_MAJOR}/lib/pg_textsearch.so /usr/lib64/pgsql/
 COPY --from=fetcher-textsearch /fetcher/usr/pgsql-${PG_MAJOR}/share/extension/* /usr/share/pgsql/extension/
 
 COPY --from=fetcher-textsearch-llvmjit /fetcher/usr/pgsql-${PG_MAJOR}/lib/bitcode/* /usr/lib64/pgsql/bitcode
 
-COPY --from=fetcher-vector /fetcher/usr/pgsql-${PG_MAJOR}/lib/vector.so /usr/lib64/pgsql/
-COPY --from=fetcher-vector /fetcher/usr/pgsql-${PG_MAJOR}/share/extension/* /usr/share/pgsql/extension/
-
 COPY --from=pgmq /usr/lib/postgresql/${PG_MAJOR}/lib/pg_partman_bgw.so /usr/lib64/pgsql/
 COPY --from=pgmq /usr/lib/postgresql/${PG_MAJOR}/lib/bitcode/src/* /usr/lib64/pgsql/
 COPY --from=pgmq /usr/share/postgresql/${PG_MAJOR}/extension/pg_partman* /usr/share/pgsql/extension/
 COPY --from=pgmq /usr/share/postgresql/${PG_MAJOR}/extension/pgmq* /usr/share/pgsql/extension/
 
-COPY <<EOF /usr/share/pgsql/postgresql.conf.sample
-listen_addresses = '*'
+COPY --from=fetcher-vector /fetcher/usr/pgsql-${PG_MAJOR}/lib/vector.so /usr/lib64/pgsql/
+COPY --from=fetcher-vector /fetcher/usr/pgsql-${PG_MAJOR}/share/extension/* /usr/share/pgsql/extension/
 
-shared_preload_libraries = 'pg_stat_statements,pg_partman_bgw,pg_textsearch,vector'
+COPY --from=fetcher-vectorscale /fetcher/usr/pgsql-${PG_MAJOR}/lib/vectorscale-${VECTORSCALE_VER}.so /usr/lib64/pgsql/
+COPY --from=fetcher-vectorscale /fetcher/usr/pgsql-${PG_MAJOR}/share/extension/* /usr/share/pgsql/extension/
 
-pg_partman_bgw.dbname = 'postgres'
-pg_partman_bgw.interval = 60
-pg_partman_bgw.role = 'postgres'
-EOF
+COPY --from=fetcher-vectorscale /fetcher/postgresql.conf /usr/share/pgsql/postgresql.conf.sample
 
 COPY <<EOF /docker-entrypoint-initdb.d/01-init-pg_textsearch.sql
 CREATE EXTENSION pg_textsearch;
 EOF
 
 COPY <<EOF /docker-entrypoint-initdb.d/02-init-pgvector.sql
-CREATE EXTENSION vector;
+CREATE EXTENSION IF NOT EXISTS vectorscale CASCADE;
 EOF
 
 COPY <<EOF /docker-entrypoint-initdb.d/03-init-pgmq.sql
